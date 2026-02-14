@@ -1,4 +1,4 @@
-import 'react';
+import * as React from 'react';
 
 export interface ParsedRecord {
   name: string;
@@ -19,6 +19,7 @@ export interface FileData {
 }
 
 // Augment InputHTMLAttributes to allow webkitdirectory
+// Fix: Using 'declare module "react"' requires a robust import to ensure the module is found during augmentation
 declare module 'react' {
   interface InputHTMLAttributes<T> {
     webkitdirectory?: string | boolean;

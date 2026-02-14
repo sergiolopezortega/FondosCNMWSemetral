@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import JSZip from 'jszip';
-import { FileData, ParsedRecord } from './types';
-import { EmptyState } from './components/EmptyState';
-import { FileList } from './components/FileList';
-import { FileDetail } from './components/FileDetail';
-import { AnalysisView } from './components/AnalysisView';
-import { parseXBRLContent, generateMarkdown } from './utils/parser';
+import { FileData, ParsedRecord } from './types.ts';
+import { EmptyState } from './components/EmptyState.tsx';
+import { FileList } from './components/FileList.tsx';
+import { FileDetail } from './components/FileDetail.tsx';
+import { AnalysisView } from './components/AnalysisView.tsx';
+import { parseXBRLContent, generateMarkdown } from './utils/parser.ts';
 import { RefreshCw, X, Layers } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -14,7 +14,6 @@ const App: React.FC = () => {
   const [isLoadingZip, setIsLoadingZip] = useState(false);
   const [viewMode, setViewMode] = useState<'detail' | 'analysis'>('detail');
 
-  // Core processing logic extracted to be used by both auto-process and manual re-process
   const performFileProcessing = async (fileData: FileData): Promise<Partial<FileData>> => {
     try {
       const text = await fileData.file.text();
@@ -35,40 +34,27 @@ const App: React.FC = () => {
   };
 
   const runSequentialProcessing = async (fileList: FileData[]) => {
-    // Process files one by one
     for (const fileItem of fileList) {
-      // 1. Set status to processing
       setFiles(prev => prev.map(f => f.id === fileItem.id ? { ...f, status: 'processing', errorMessage: undefined } : f));
-      
-      // 2. Small delay to ensure UI updates and browser doesn't freeze
       await new Promise(resolve => setTimeout(resolve, 50)); 
-
-      // 3. Process
       const resultUpdates = await performFileProcessing(fileItem);
-
-      // 4. Update result
       setFiles(prev => prev.map(f => f.id === fileItem.id ? { ...f, ...resultUpdates } : f));
     }
   };
 
   const processZipBlob = useCallback(async (blob: Blob) => {
-    // Load zip content
     const zip = await JSZip.loadAsync(blob);
     const newFiles: FileData[] = [];
     const promises: Promise<void>[] = [];
 
-    // Iterate over zip files
     zip.forEach((relativePath, zipEntry) => {
-      if (zipEntry.dir) return; // Skip directories
-      
+      if (zipEntry.dir) return;
       const lowerName = zipEntry.name.toLowerCase();
       if (lowerName.endsWith('.xbrl') || lowerName.endsWith('.xml')) {
-        // Convert zip object to Blob/File so it works with existing logic
         const promise = zipEntry.async('blob').then((fileBlob) => {
           const file = new File([fileBlob], zipEntry.name, { 
               type: lowerName.endsWith('.xml') ? 'text/xml' : 'application/x-xbrl-xml' 
           });
-
           newFiles.push({
             id: Math.random().toString(36).substr(2, 9),
             file: file,
@@ -83,25 +69,14 @@ const App: React.FC = () => {
 
     await Promise.all(promises);
 
-    if (newFiles.length === 0) {
-      console.warn("El archivo ZIP no contiene ficheros XBRL o XML válidos.");
-      if (files.length === 0) {
-          // No op, remains in empty state
-      }
-    } else {
-      // Sort files by name for consistency
+    if (newFiles.length > 0) {
       newFiles.sort((a, b) => a.file.name.localeCompare(b.file.name));
-      
-      // Set initial state
       setFiles(newFiles);
       setSelectedFileId(newFiles[0].id);
       setViewMode('detail');
-
-      // Trigger automatic sequential processing
-      // We pass newFiles directly to avoid waiting for state update
       runSequentialProcessing(newFiles);
     }
-  }, [files.length]);
+  }, []);
 
   const handleLoadZip = useCallback(async () => {
     setIsLoadingZip(true);
@@ -112,7 +87,6 @@ const App: React.FC = () => {
       }
       const blob = await response.blob();
       await processZipBlob(blob);
-
     } catch (error) {
       console.error("Error loading zip:", error);
     } finally {
@@ -126,29 +100,22 @@ const App: React.FC = () => {
       await processZipBlob(file);
     } catch (error) {
       console.error("Error processing manual zip:", error);
-      alert("Error al procesar el archivo ZIP. Asegúrate de que es un archivo válido.");
+      alert("Error al procesar el archivo ZIP.");
     } finally {
       setIsLoadingZip(false);
     }
   }, [processZipBlob]);
 
-  // Auto-load on mount
   useEffect(() => {
     handleLoadZip();
   }, [handleLoadZip]);
 
-  // Single file reprocessing (triggered from FileDetail)
   const processSingleFile = async (id: string) => {
     const fileData = files.find(f => f.id === id);
     if (!fileData) return;
-
     setFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'processing', errorMessage: undefined } : f));
-    
-    // Simulate slight delay for UI feedback
     await new Promise(resolve => setTimeout(resolve, 100));
-
     const resultUpdates = await performFileProcessing(fileData);
-    
     setFiles(prev => prev.map(f => f.id === id ? { ...f, ...resultUpdates } : f));
   };
 
@@ -167,7 +134,6 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col bg-slate-100">
-      {/* App Header */}
       <header className="bg-primary text-white p-4 shadow-md flex justify-between items-center z-10">
         <div className="flex items-center gap-3">
           <div className="bg-accent p-2 rounded-lg">
@@ -192,7 +158,6 @@ const App: React.FC = () => {
               <Layers size={16} />
               Analizar coincidencias
             </button>
-
             <button 
               onClick={resetApp}
               className="p-2 hover:bg-slate-800 rounded-full transition-colors"
@@ -204,7 +169,6 @@ const App: React.FC = () => {
         )}
       </header>
 
-      {/* Main Body */}
       <main className="flex-1 overflow-hidden flex">
         {files.length === 0 ? (
           <div className="flex-1 p-8">
