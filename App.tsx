@@ -69,42 +69,71 @@ const App: React.FC = () => {
     setIsLoading(true);
     setLoadError(null);
     
-    // URL Busting para evitar cachés de errores 404
-    const zipUrl = `/files.zip?t=${Date.now()}`;
-    
-    try {
-      const response = await fetch(zipUrl);
-      
-      if (response.ok) {
-        const blob = await response.blob();
-        const zip = await JSZip.loadAsync(blob);
-        const extractedFiles: File[] = [];
-        
-        const promises: Promise<void>[] = [];
-        zip.forEach((path, entry) => {
-          if (!entry.dir) {
-            promises.push(entry.async('blob').then(content => {
-              extractedFiles.push(new File([content], entry.name));
-            }));
+    // Intentaremos varias rutas comunes
+    const possiblePaths = [
+      `/files.zip?t=${Date.now()}`,
+      `/public/files.zip?t=${Date.now()}`,
+      `files.zip?t=${Date.now()}`
+    ];
+
+    let success = false;
+    let lastStatus = 0;
+
+    for (const path of possiblePaths) {
+      try {
+        console.log(`Intentando cargar desde: ${path}`);
+        const response = await fetch(path);
+        lastStatus = response.status;
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          // Si el servidor nos devuelve HTML (página de error), no es el ZIP
+          if (contentType && contentType.includes('text/html')) {
+            console.warn(`La ruta ${path} devolvió HTML en lugar de un ZIP (posible error 404 camuflado).`);
+            continue;
           }
-        });
-        
-        await Promise.all(promises);
-        if (extractedFiles.length > 0) {
-          await processFiles(extractedFiles);
+
+          const blob = await response.blob();
+          
+          // Verificación mínima de firma de archivo ZIP (PK..)
+          const buffer = await blob.slice(0, 4).arrayBuffer();
+          const header = new Uint8Array(buffer);
+          if (header[0] !== 0x50 || header[1] !== 0x4B) {
+            console.warn(`El archivo en ${path} no parece ser un ZIP válido (encabezado incorrecto).`);
+            continue;
+          }
+
+          const zip = await JSZip.loadAsync(blob);
+          const extractedFiles: File[] = [];
+          
+          const entryPromises: Promise<void>[] = [];
+          zip.forEach((zipPath, entry) => {
+            if (!entry.dir) {
+              entryPromises.push(entry.async('blob').then(content => {
+                extractedFiles.push(new File([content], entry.name));
+              }));
+            }
+          });
+          
+          await Promise.all(entryPromises);
+          if (extractedFiles.length > 0) {
+            await processFiles(extractedFiles);
+            success = true;
+            console.log(`¡Éxito! Archivos cargados desde ${path}`);
+            break; // Salimos del bucle si tenemos éxito
+          }
         }
-      } else {
-        const msg = `Error ${response.status}: El archivo no se encuentra en ${window.location.origin}/files.zip`;
-        setLoadError(msg);
-        console.error(msg);
+      } catch (error) {
+        console.error(`Error intentando cargar ${path}:`, error);
       }
-    } catch (error) {
-      const msg = "Error de red al intentar cargar el archivo ZIP.";
-      setLoadError(msg);
-      console.error(msg, error);
-    } finally {
-      setIsLoading(false);
     }
+
+    if (!success) {
+      const msg = `No se pudo encontrar un archivo ZIP válido. (Último estado: ${lastStatus})`;
+      setLoadError(msg);
+    }
+    
+    setIsLoading(false);
   }, [processFiles]);
 
   const handleManualZip = useCallback(async (file: File) => {
