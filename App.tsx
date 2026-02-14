@@ -78,7 +78,8 @@ const App: React.FC = () => {
     // Lista exhaustiva de posibles rutas
     const timestamp = Date.now();
     const pathsToTry = [
-      `/files.zip`,               // Relativa
+      `/files.zip`,
+      `/fondosfiles.zip`,               // Relativa
      ];
     
     setTriedPaths(pathsToTry);
