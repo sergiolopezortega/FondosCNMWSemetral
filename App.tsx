@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import JSZip from 'jszip';
 import { FileData } from './types.ts';
@@ -57,6 +58,7 @@ const App: React.FC = () => {
       markdownContent: null
     }));
 
+    // Fix: Correctly access file.name on the 'b' object of type FileData
     newFileData.sort((a, b) => a.file.name.localeCompare(b.file.name));
     setFiles(newFileData);
     setSelectedFileId(newFileData[0].id);
@@ -66,35 +68,48 @@ const App: React.FC = () => {
 
   const handleLoadZip = useCallback(async () => {
     setIsLoading(true);
-    // Usamos ruta absoluta /files.zip para evitar problemas de rutas relativas en Vercel
-    const zipUrl = `/files.zip?t=${Date.now()}`;
-    console.log(`Intentando cargar files.zip desde: ${window.location.origin}${zipUrl}`);
     
-    try {
-      const response = await fetch(zipUrl);
-      if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status} ${response.statusText} en la ruta ${zipUrl}`);
-      }
-      const blob = await response.blob();
-      const zip = await JSZip.loadAsync(blob);
-      const extractedFiles: File[] = [];
-      
-      const promises: Promise<void>[] = [];
-      zip.forEach((path, entry) => {
-        if (!entry.dir) {
-          promises.push(entry.async('blob').then(content => {
-            extractedFiles.push(new File([content], entry.name));
-          }));
+    // Probar varias rutas posibles para el zip
+    const pathsToTry = [
+      'files.zip',
+      '/files.zip',
+      './files.zip'
+    ];
+
+    for (const path of pathsToTry) {
+      try {
+        console.log(`Intentando cargar desde: ${path}`);
+        const response = await fetch(path, { cache: 'no-store' });
+        
+        if (response.ok) {
+          console.log(`¡Éxito! Archivo encontrado en: ${path}`);
+          const blob = await response.blob();
+          const zip = await JSZip.loadAsync(blob);
+          const extractedFiles: File[] = [];
+          
+          const promises: Promise<void>[] = [];
+          zip.forEach((zipPath, entry) => {
+            if (!entry.dir) {
+              promises.push(entry.async('blob').then(content => {
+                extractedFiles.push(new File([content], entry.name));
+              }));
+            }
+          });
+          
+          await Promise.all(promises);
+          await processFiles(extractedFiles);
+          setIsLoading(false);
+          return; // Salir si tiene éxito
+        } else {
+          console.warn(`Path ${path} falló con status: ${response.status}`);
         }
-      });
-      
-      await Promise.all(promises);
-      await processFiles(extractedFiles);
-    } catch (error) {
-      console.error("Fallo al cargar files.zip automáticamente:", error);
-    } finally {
-      setIsLoading(false);
+      } catch (err) {
+        console.error(`Error de red o CORS en path ${path}:`, err);
+      }
     }
+
+    console.error("No se pudo cargar files.zip desde ninguna de las rutas probadas.");
+    setIsLoading(false);
   }, [processFiles]);
 
   const handleManualZip = useCallback(async (file: File) => {
