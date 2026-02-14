@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import JSZip from 'jszip';
 import { FileData } from './types.ts';
@@ -13,6 +14,7 @@ const App: React.FC = () => {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [triedPaths, setTriedPaths] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'detail' | 'analysis'>('detail');
 
   const performFileProcessing = async (fileData: FileData): Promise<Partial<FileData>> => {
@@ -69,44 +71,52 @@ const App: React.FC = () => {
     setIsLoading(true);
     setLoadError(null);
     
-    // Intentaremos varias rutas comunes
-    const possiblePaths = [
-      `/files.zip?t=${Date.now()}`,
-      `/public/files.zip?t=${Date.now()}`,
-      `files.zip?t=${Date.now()}`
+    // Determinamos la base actual del navegador
+    const currentPath = window.location.pathname;
+    const baseDir = currentPath.substring(0, currentPath.lastIndexOf('/') + 1) || '/';
+    
+    // Lista exhaustiva de posibles rutas
+    const timestamp = Date.now();
+    const pathsToTry = [
+      `files.zip`,               // Relativa
+      `public/files.zip`,        // Relativa a public
+      `${baseDir}files.zip`,     // Absoluta dinámica
+      `${baseDir}public/files.zip`, // Absoluta dinámica a public
+      `/files.zip`,              // Raíz absoluta
+      `/public/files.zip`        // Raíz absoluta a public
     ];
+    
+    setTriedPaths(pathsToTry);
 
     let success = false;
-    let lastStatus = 0;
+    let errorDetail = "";
 
-    for (const path of possiblePaths) {
+    for (const path of pathsToTry) {
       try {
-        console.log(`Intentando cargar desde: ${path}`);
+        console.log(`Intentando: ${path}`);
         const response = await fetch(path);
-        lastStatus = response.status;
-
+        
         if (response.ok) {
-          const contentType = response.headers.get('content-type');
-          // Si el servidor nos devuelve HTML (página de error), no es el ZIP
-          if (contentType && contentType.includes('text/html')) {
-            console.warn(`La ruta ${path} devolvió HTML en lugar de un ZIP (posible error 404 camuflado).`);
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('text/html')) {
+            console.warn(`Omitiendo ${path}: el servidor devolvió HTML (probable 404 personalizado).`);
             continue;
           }
 
           const blob = await response.blob();
           
-          // Verificación mínima de firma de archivo ZIP (PK..)
+          // Verificación de cabecera ZIP (PK\x03\x04)
           const buffer = await blob.slice(0, 4).arrayBuffer();
           const header = new Uint8Array(buffer);
           if (header[0] !== 0x50 || header[1] !== 0x4B) {
-            console.warn(`El archivo en ${path} no parece ser un ZIP válido (encabezado incorrecto).`);
+            console.warn(`Omitiendo ${path}: el archivo no tiene firma de ZIP.`);
             continue;
           }
 
           const zip = await JSZip.loadAsync(blob);
           const extractedFiles: File[] = [];
-          
           const entryPromises: Promise<void>[] = [];
+          
           zip.forEach((zipPath, entry) => {
             if (!entry.dir) {
               entryPromises.push(entry.async('blob').then(content => {
@@ -119,18 +129,20 @@ const App: React.FC = () => {
           if (extractedFiles.length > 0) {
             await processFiles(extractedFiles);
             success = true;
-            console.log(`¡Éxito! Archivos cargados desde ${path}`);
-            break; // Salimos del bucle si tenemos éxito
+            console.log(`¡Cargado con éxito desde ${path}!`);
+            break;
           }
+        } else {
+          errorDetail = `Estado HTTP: ${response.status}`;
         }
-      } catch (error) {
-        console.error(`Error intentando cargar ${path}:`, error);
+      } catch (err) {
+        console.error(`Error en ruta ${path}:`, err);
+        errorDetail = err instanceof Error ? err.message : "Error de red";
       }
     }
 
     if (!success) {
-      const msg = `No se pudo encontrar un archivo ZIP válido. (Último estado: ${lastStatus})`;
-      setLoadError(msg);
+      setLoadError(`No se encontró files.zip. ${errorDetail}`);
     }
     
     setIsLoading(false);
@@ -237,6 +249,7 @@ const App: React.FC = () => {
               onFolderSelect={handleFolderSelect}
               isLoading={isLoading} 
               error={loadError}
+              debugPaths={triedPaths}
             />
           </div>
         ) : (

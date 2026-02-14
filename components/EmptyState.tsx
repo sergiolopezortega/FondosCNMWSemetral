@@ -1,5 +1,6 @@
+
 import React, { useRef } from 'react';
-import { Package, Loader2, AlertCircle, Upload, FolderOpen, RefreshCw, HelpCircle } from 'lucide-react';
+import { Package, Loader2, AlertCircle, Upload, FolderOpen, RefreshCw, HelpCircle, Code } from 'lucide-react';
 
 interface EmptyStateProps {
   onLoadZip: () => void;
@@ -7,9 +8,10 @@ interface EmptyStateProps {
   onFolderSelect: (files: FileList | null) => void;
   isLoading: boolean;
   error?: string | null;
+  debugPaths?: string[];
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ onLoadZip, onManualUpload, onFolderSelect, isLoading, error }) => {
+export const EmptyState: React.FC<EmptyStateProps> = ({ onLoadZip, onManualUpload, onFolderSelect, isLoading, error, debugPaths }) => {
   const folderInputRef = useRef<HTMLInputElement>(null);
   
   const handleZipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,21 +41,33 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onLoadZip, onManualUploa
       </div>
       <h2 className="text-2xl font-bold text-slate-800 mb-2">Bienvenido al Analizador de Fondos</h2>
       
-      {error ? (
-        <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg max-w-2xl text-left">
+      {error && (
+        <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg max-w-2xl text-left w-full">
           <div className="flex items-center gap-2 text-amber-700 font-bold mb-1">
             <AlertCircle size={18} />
-            Carga automática fallida
+            No se pudo cargar /files.zip automáticamente
           </div>
           <p className="text-sm text-amber-800 mb-3">{error}</p>
-          <div className="flex items-start gap-2 bg-white/50 p-3 rounded border border-amber-100">
+          
+          <div className="bg-white/50 p-3 rounded border border-amber-100 mb-4">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-900 mb-2">
+              <Code size={14} /> Rutas probadas:
+            </div>
+            <ul className="text-[10px] font-mono text-amber-800 list-disc list-inside space-y-1">
+              {debugPaths?.map((p, i) => <li key={i}>{p.split('?')[0]}</li>)}
+            </ul>
+          </div>
+
+          <div className="flex items-start gap-2 bg-amber-100/50 p-3 rounded border border-amber-200">
             <HelpCircle size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-amber-900">
-              <b>Tip para Vercel:</b> Si el archivo está en el repositorio pero recibes este error, intenta moverlo a una carpeta llamada <code>public/</code> en la raíz de tu proyecto (ej: <code>public/files.zip</code>). Vercel sirve automáticamente el contenido de esa carpeta.
+              <b>Verificación final:</b> Asegúrate de que el archivo se llama exactamente <code>files.zip</code> (todo en minúsculas) y que está en la carpeta <code>public/</code> de tu repositorio. En este entorno, el archivo debe ser visible en el árbol de archivos a la izquierda.
             </p>
           </div>
         </div>
-      ) : (
+      )}
+      
+      {!error && (
         <p className="text-slate-500 max-w-md mb-8">
           Puedes seleccionar una carpeta local o subir un archivo ZIP con tus reportes XBRL para comenzar el análisis.
         </p>
