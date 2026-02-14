@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import JSZip from 'jszip';
-import { FileData, ParsedRecord } from './types.ts';
+import { FileData } from './types.ts';
 import { EmptyState } from './components/EmptyState.tsx';
 import { FileList } from './components/FileList.tsx';
 import { FileDetail } from './components/FileDetail.tsx';
@@ -11,7 +11,7 @@ import { RefreshCw, X, Layers } from 'lucide-react';
 const App: React.FC = () => {
   const [files, setFiles] = useState<FileData[]>([]);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  const [isLoadingZip, setIsLoadingZip] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'detail' | 'analysis'>('detail');
 
   const performFileProcessing = async (fileData: FileData): Promise<Partial<FileData>> => {
@@ -36,75 +36,95 @@ const App: React.FC = () => {
   const runSequentialProcessing = async (fileList: FileData[]) => {
     for (const fileItem of fileList) {
       setFiles(prev => prev.map(f => f.id === fileItem.id ? { ...f, status: 'processing', errorMessage: undefined } : f));
-      await new Promise(resolve => setTimeout(resolve, 50)); 
       const resultUpdates = await performFileProcessing(fileItem);
       setFiles(prev => prev.map(f => f.id === fileItem.id ? { ...f, ...resultUpdates } : f));
     }
   };
 
-  const processZipBlob = useCallback(async (blob: Blob) => {
-    const zip = await JSZip.loadAsync(blob);
-    const newFiles: FileData[] = [];
-    const promises: Promise<void>[] = [];
-
-    zip.forEach((relativePath, zipEntry) => {
-      if (zipEntry.dir) return;
-      const lowerName = zipEntry.name.toLowerCase();
-      if (lowerName.endsWith('.xbrl') || lowerName.endsWith('.xml')) {
-        const promise = zipEntry.async('blob').then((fileBlob) => {
-          const file = new File([fileBlob], zipEntry.name, { 
-              type: lowerName.endsWith('.xml') ? 'text/xml' : 'application/x-xbrl-xml' 
-          });
-          newFiles.push({
-            id: Math.random().toString(36).substr(2, 9),
-            file: file,
-            status: 'pending',
-            records: [],
-            markdownContent: null
-          });
-        });
-        promises.push(promise);
-      }
+  const processFiles = useCallback(async (rawFiles: File[]) => {
+    const validFiles = rawFiles.filter(f => {
+      const name = f.name.toLowerCase();
+      return name.endsWith('.xbrl') || name.endsWith('.xml');
     });
 
-    await Promise.all(promises);
+    if (validFiles.length === 0) return;
 
-    if (newFiles.length > 0) {
-      newFiles.sort((a, b) => a.file.name.localeCompare(b.file.name));
-      setFiles(newFiles);
-      setSelectedFileId(newFiles[0].id);
-      setViewMode('detail');
-      runSequentialProcessing(newFiles);
-    }
+    const newFileData: FileData[] = validFiles.map(file => ({
+      id: Math.random().toString(36).substr(2, 9),
+      file: file,
+      status: 'pending',
+      records: [],
+      markdownContent: null
+    }));
+
+    newFileData.sort((a, b) => a.file.name.localeCompare(b.file.name));
+    setFiles(newFileData);
+    setSelectedFileId(newFileData[0].id);
+    setViewMode('detail');
+    runSequentialProcessing(newFileData);
   }, []);
 
   const handleLoadZip = useCallback(async () => {
-    setIsLoadingZip(true);
+    setIsLoading(true);
+    // Usamos ruta absoluta /files.zip para evitar problemas de rutas relativas en Vercel
+    const zipUrl = `/files.zip?t=${Date.now()}`;
+    console.log(`Intentando cargar files.zip desde: ${window.location.origin}${zipUrl}`);
+    
     try {
-      const response = await fetch('./files.zip');
+      const response = await fetch(zipUrl);
       if (!response.ok) {
-        throw new Error(`No se pudo cargar el archivo files.zip (Status: ${response.status})`);
+        throw new Error(`HTTP Error: ${response.status} ${response.statusText} en la ruta ${zipUrl}`);
       }
       const blob = await response.blob();
-      await processZipBlob(blob);
+      const zip = await JSZip.loadAsync(blob);
+      const extractedFiles: File[] = [];
+      
+      const promises: Promise<void>[] = [];
+      zip.forEach((path, entry) => {
+        if (!entry.dir) {
+          promises.push(entry.async('blob').then(content => {
+            extractedFiles.push(new File([content], entry.name));
+          }));
+        }
+      });
+      
+      await Promise.all(promises);
+      await processFiles(extractedFiles);
     } catch (error) {
-      console.error("Error loading zip:", error);
+      console.error("Fallo al cargar files.zip automáticamente:", error);
     } finally {
-      setIsLoadingZip(false);
+      setIsLoading(false);
     }
-  }, [processZipBlob]);
+  }, [processFiles]);
 
-  const handleManualUpload = useCallback(async (file: File) => {
-    setIsLoadingZip(true);
+  const handleManualZip = useCallback(async (file: File) => {
+    setIsLoading(true);
     try {
-      await processZipBlob(file);
+      const zip = await JSZip.loadAsync(file);
+      const extractedFiles: File[] = [];
+      const promises: Promise<void>[] = [];
+      zip.forEach((path, entry) => {
+        if (!entry.dir) {
+          promises.push(entry.async('blob').then(content => {
+            extractedFiles.push(new File([content], entry.name));
+          }));
+        }
+      });
+      await Promise.all(promises);
+      await processFiles(extractedFiles);
     } catch (error) {
-      console.error("Error processing manual zip:", error);
-      alert("Error al procesar el archivo ZIP.");
+      alert("Error al procesar el archivo ZIP manual.");
     } finally {
-      setIsLoadingZip(false);
+      setIsLoading(false);
     }
-  }, [processZipBlob]);
+  }, [processFiles]);
+
+  const handleFolderSelect = useCallback((fileList: FileList | null) => {
+    if (!fileList) return;
+    setIsLoading(true);
+    const filesArray = Array.from(fileList);
+    processFiles(filesArray).finally(() => setIsLoading(false));
+  }, [processFiles]);
 
   useEffect(() => {
     handleLoadZip();
@@ -114,7 +134,6 @@ const App: React.FC = () => {
     const fileData = files.find(f => f.id === id);
     if (!fileData) return;
     setFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'processing', errorMessage: undefined } : f));
-    await new Promise(resolve => setTimeout(resolve, 100));
     const resultUpdates = await performFileProcessing(fileData);
     setFiles(prev => prev.map(f => f.id === id ? { ...f, ...resultUpdates } : f));
   };
@@ -174,8 +193,9 @@ const App: React.FC = () => {
           <div className="flex-1 p-8">
             <EmptyState 
               onLoadZip={handleLoadZip} 
-              onManualUpload={handleManualUpload} 
-              isLoading={isLoadingZip} 
+              onManualUpload={handleManualZip}
+              onFolderSelect={handleFolderSelect}
+              isLoading={isLoading} 
             />
           </div>
         ) : (

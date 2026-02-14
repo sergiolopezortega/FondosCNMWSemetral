@@ -1,0 +1,16 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "routes": [
+    {
+      "src": "/files.zip",
+      "dest": "/files.zip",
+      "headers": {
+        "Content-Type": "application/zip",
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      }
+    },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
