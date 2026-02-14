@@ -1,11 +1,4 @@
-
 {
   "cleanUrls": true,
-  "trailingSlash": false,
-  "rewrites": [
-    {
-      "source": "/files.zip",
-      "destination": "/files.zip"
-    }
-  ]
+  "trailingSlash": false
 }

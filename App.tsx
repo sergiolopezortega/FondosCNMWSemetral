@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import JSZip from 'jszip';
 import { FileData } from './types.ts';
@@ -13,6 +12,7 @@ const App: React.FC = () => {
   const [files, setFiles] = useState<FileData[]>([]);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'detail' | 'analysis'>('detail');
 
   const performFileProcessing = async (fileData: FileData): Promise<Partial<FileData>> => {
@@ -67,28 +67,21 @@ const App: React.FC = () => {
 
   const handleLoadZip = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     
-    // Construimos la URL absoluta para evitar ambigüedades
-    // Añadimos un timestamp para bustear cualquier caché de 404 del CDN de Vercel
-    const baseUrl = window.location.origin;
-    const zipUrl = `${baseUrl}/files.zip?t=${Date.now()}`;
-
-    console.log(`Intentando carga automática desde URL absoluta: ${zipUrl}`);
+    // URL Busting para evitar cachés de errores 404
+    const zipUrl = `/files.zip?t=${Date.now()}`;
     
     try {
-      const response = await fetch(zipUrl, { 
-        cache: 'no-store',
-        mode: 'cors'
-      });
+      const response = await fetch(zipUrl);
       
       if (response.ok) {
-        console.log("¡Archivo files.zip encontrado!");
         const blob = await response.blob();
         const zip = await JSZip.loadAsync(blob);
         const extractedFiles: File[] = [];
         
         const promises: Promise<void>[] = [];
-        zip.forEach((zipPath, entry) => {
+        zip.forEach((path, entry) => {
           if (!entry.dir) {
             promises.push(entry.async('blob').then(content => {
               extractedFiles.push(new File([content], entry.name));
@@ -99,18 +92,16 @@ const App: React.FC = () => {
         await Promise.all(promises);
         if (extractedFiles.length > 0) {
           await processFiles(extractedFiles);
-        } else {
-          console.warn("El ZIP estaba vacío o no contenía archivos válidos.");
         }
       } else {
-        console.error(`Error HTTP ${response.status}: Vercel no encuentra el archivo en la raíz.`);
-        // Si falla con 404, mostramos un log detallado para ayudar al usuario
-        if (response.status === 404) {
-          console.info("TIP: Si el archivo existe en el repo, intenta moverlo a una carpeta llamada 'public/' si estás usando algún framework, o revisa que Vercel no esté desplegando desde una subcarpeta.");
-        }
+        const msg = `Error ${response.status}: El archivo no se encuentra en ${window.location.origin}/files.zip`;
+        setLoadError(msg);
+        console.error(msg);
       }
-    } catch (err) {
-      console.error("Error de red al intentar precargar files.zip:", err);
+    } catch (error) {
+      const msg = "Error de red al intentar cargar el archivo ZIP.";
+      setLoadError(msg);
+      console.error(msg, error);
     } finally {
       setIsLoading(false);
     }
@@ -160,6 +151,7 @@ const App: React.FC = () => {
   const resetApp = () => {
     setFiles([]);
     setSelectedFileId(null);
+    setLoadError(null);
     setViewMode('detail');
   };
 
@@ -215,6 +207,7 @@ const App: React.FC = () => {
               onManualUpload={handleManualZip}
               onFolderSelect={handleFolderSelect}
               isLoading={isLoading} 
+              error={loadError}
             />
           </div>
         ) : (

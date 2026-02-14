@@ -1,16 +1,15 @@
-
 import React, { useRef } from 'react';
-// Add RefreshCw to the imports from lucide-react
-import { Package, Loader2, AlertCircle, Upload, FolderOpen, RefreshCw } from 'lucide-react';
+import { Package, Loader2, AlertCircle, Upload, FolderOpen, RefreshCw, HelpCircle } from 'lucide-react';
 
 interface EmptyStateProps {
   onLoadZip: () => void;
   onManualUpload: (file: File) => void;
   onFolderSelect: (files: FileList | null) => void;
   isLoading: boolean;
+  error?: string | null;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ onLoadZip, onManualUpload, onFolderSelect, isLoading }) => {
+export const EmptyState: React.FC<EmptyStateProps> = ({ onLoadZip, onManualUpload, onFolderSelect, isLoading, error }) => {
   const folderInputRef = useRef<HTMLInputElement>(null);
   
   const handleZipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,12 +38,28 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onLoadZip, onManualUploa
         <Package size={48} className="text-slate-400" />
       </div>
       <h2 className="text-2xl font-bold text-slate-800 mb-2">Bienvenido al Analizador de Fondos</h2>
-      <p className="text-slate-500 max-w-md mb-8">
-        No se detectó la carga automática de <code>files.zip</code>. Puedes intentar cargarlo de nuevo o seleccionar una carpeta de tu ordenador que contenga archivos XBRL/XML.
-      </p>
+      
+      {error ? (
+        <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg max-w-2xl text-left">
+          <div className="flex items-center gap-2 text-amber-700 font-bold mb-1">
+            <AlertCircle size={18} />
+            Carga automática fallida
+          </div>
+          <p className="text-sm text-amber-800 mb-3">{error}</p>
+          <div className="flex items-start gap-2 bg-white/50 p-3 rounded border border-amber-100">
+            <HelpCircle size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-amber-900">
+              <b>Tip para Vercel:</b> Si el archivo está en el repositorio pero recibes este error, intenta moverlo a una carpeta llamada <code>public/</code> en la raíz de tu proyecto (ej: <code>public/files.zip</code>). Vercel sirve automáticamente el contenido de esa carpeta.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="text-slate-500 max-w-md mb-8">
+          Puedes seleccionar una carpeta local o subir un archivo ZIP con tus reportes XBRL para comenzar el análisis.
+        </p>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-        {/* Opción Carpeta Local (Requisito 1) */}
         <div className="p-6 border-2 border-dashed border-slate-200 rounded-xl hover:border-accent hover:bg-blue-50/50 transition-all group flex flex-col items-center">
           <FolderOpen size={32} className="text-slate-400 group-hover:text-accent mb-4" />
           <h3 className="font-bold text-slate-700 mb-1">Seleccionar Carpeta</h3>
@@ -65,7 +80,6 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onLoadZip, onManualUploa
           </button>
         </div>
 
-        {/* Opción ZIP manual */}
         <div className="p-6 border-2 border-dashed border-slate-200 rounded-xl hover:border-accent hover:bg-blue-50/50 transition-all group flex flex-col items-center">
           <Upload size={32} className="text-slate-400 group-hover:text-accent mb-4" />
           <h3 className="font-bold text-slate-700 mb-1">Subir archivo ZIP</h3>
@@ -90,7 +104,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onLoadZip, onManualUploa
           className="text-xs text-accent hover:underline flex items-center justify-center gap-1 mx-auto"
         >
           <RefreshCw size={12} />
-          Reintentar carga automática de files.zip
+          Reintentar carga automática de /files.zip
         </button>
       </div>
     </div>
