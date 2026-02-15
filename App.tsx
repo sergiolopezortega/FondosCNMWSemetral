@@ -125,12 +125,12 @@ const App: React.FC = () => {
           }
         }
       } catch (err) {
-        console.error(`Error en ruta ${path}:`, err);
+        console.error(`Error en ruta ${import.meta.env.BASE_URL}/fondosfiles.zip`:`, err);
       }
     }
 
     if (!success) {
-      setLoadError(`No se pudo localizar el archivo ZIP automáticamente. Revisa que files.zip esté en la raíz o en la carpeta public.`);
+      setLoadError(`No se pudo localizar el archivo ZIP automáticamente en la ruta: ${import.meta.env.BASE_URL}/fondosfiles.zip`);
     }
     
     setIsLoading(false);
