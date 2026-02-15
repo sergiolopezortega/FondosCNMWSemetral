@@ -125,7 +125,7 @@ const App: React.FC = () => {
           }
         }
       } catch (err) {
-        console.error(`Error en ruta ${import.meta.env.BASE_URL}/fondosfiles.zip`:`, err);
+        console.error(`Error en ruta ${import.meta.env.BASE_URL}/fondosfiles.zip`, err);
       }
     }
 
