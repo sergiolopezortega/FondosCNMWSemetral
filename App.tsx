@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import JSZip from 'jszip';
 import { FileData } from './types.ts';
@@ -7,7 +6,7 @@ import { FileList } from './components/FileList.tsx';
 import { FileDetail } from './components/FileDetail.tsx';
 import { AnalysisView } from './components/AnalysisView.tsx';
 import { parseXBRLContent, generateMarkdown } from './utils/parser.ts';
-import { RefreshCw, X, Layers } from 'lucide-react';
+import { BarChart3, Layers } from 'lucide-react';
 
 const App: React.FC = () => {
   const [files, setFiles] = useState<FileData[]>([]);
@@ -21,7 +20,11 @@ const App: React.FC = () => {
     try {
       const text = await fileData.file.text();
       const records = parseXBRLContent(text);
-      const markdown = generateMarkdown(fileData.file.name, records);
+      
+      // Asegurar nombre limpio para el markdown
+      const cleanName = fileData.file.name.split(/[\\/]/).pop() || fileData.file.name;
+      const markdown = generateMarkdown(cleanName, records);
+      
       return {
         status: 'completed',
         records,
@@ -71,41 +74,32 @@ const App: React.FC = () => {
     setIsLoading(true);
     setLoadError(null);
     
-    // Determinamos la base actual del navegador
-    const currentPath = window.location.pathname;
-    const baseDir = currentPath.substring(0, currentPath.lastIndexOf('/') + 1) || '/';
-    
-    // Lista exhaustiva de posibles rutas
-    const timestamp = Date.now();
     const pathsToTry = [
-      `/files.zip`,
-      `/fondosfiles.zip`,               // Relativa
-     ];
+      '/fondosfiles.zip'
+    ];
     
     setTriedPaths(pathsToTry);
 
     let success = false;
-    let errorDetail = "";
 
     for (const path of pathsToTry) {
       try {
-        console.log(`Intentando: ${path}`);
+        console.log(`Intentando cargar desde: ${path}`);
         const response = await fetch(path);
         
         if (response.ok) {
           const contentType = response.headers.get('content-type') || '';
           if (contentType.includes('text/html')) {
-            console.warn(`Omitiendo ${path}: el servidor devolvió HTML (probable 404 personalizado).`);
+            console.warn(`Omitiendo ${path}: el servidor devolvió HTML.`);
             continue;
           }
 
           const blob = await response.blob();
           
-          // Verificación de cabecera ZIP (PK\x03\x04)
           const buffer = await blob.slice(0, 4).arrayBuffer();
           const header = new Uint8Array(buffer);
           if (header[0] !== 0x50 || header[1] !== 0x4B) {
-            console.warn(`Omitiendo ${path}: el archivo no tiene firma de ZIP.`);
+            console.warn(`Omitiendo ${path}: no es un archivo ZIP válido.`);
             continue;
           }
 
@@ -128,17 +122,14 @@ const App: React.FC = () => {
             console.log(`¡Cargado con éxito desde ${path}!`);
             break;
           }
-        } else {
-          errorDetail = `Estado HTTP: ${response.status}`;
         }
       } catch (err) {
         console.error(`Error en ruta ${path}:`, err);
-        errorDetail = err instanceof Error ? err.message : "Error de red";
       }
     }
 
     if (!success) {
-      setLoadError(`No se encontró files.zip. ${errorDetail}`);
+      setLoadError(`No se pudo localizar el archivo ZIP automáticamente. Revisa que files.zip esté en la raíz o en la carpeta public.`);
     }
     
     setIsLoading(false);
@@ -185,13 +176,6 @@ const App: React.FC = () => {
     setFiles(prev => prev.map(f => f.id === id ? { ...f, ...resultUpdates } : f));
   };
 
-  const resetApp = () => {
-    setFiles([]);
-    setSelectedFileId(null);
-    setLoadError(null);
-    setViewMode('detail');
-  };
-
   const handleSelectFile = (id: string) => {
     setSelectedFileId(id);
     setViewMode('detail');
@@ -204,11 +188,10 @@ const App: React.FC = () => {
       <header className="bg-primary text-white p-4 shadow-md flex justify-between items-center z-10">
         <div className="flex items-center gap-3">
           <div className="bg-accent p-2 rounded-lg">
-            <RefreshCw size={24} className="text-white" />
+            <BarChart3 size={24} className="text-white" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight">Analisis Semestral Fondos</h1>
-            <p className="text-xs text-slate-400">Renta Variable Cotizada Parser</p>
           </div>
         </div>
         
@@ -224,13 +207,6 @@ const App: React.FC = () => {
             >
               <Layers size={16} />
               Analizar coincidencias
-            </button>
-            <button 
-              onClick={resetApp}
-              className="p-2 hover:bg-slate-800 rounded-full transition-colors"
-              title="Cerrar Carpeta"
-            >
-              <X size={20} />
             </button>
           </div>
         )}
@@ -265,7 +241,7 @@ const App: React.FC = () => {
                 />
               ) : (
                 <div className="flex-1 bg-slate-50 flex items-center justify-center text-slate-400">
-                  Selecciona un archivo
+                  Selecciona un fondo
                 </div>
               )
             )}

@@ -13,13 +13,18 @@ export const FileDetail: React.FC<FileDetailProps> = ({ fileData, onProcess }) =
   const [showMarkdown, setShowMarkdown] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('weight');
   
+  // Obtener nombre base sin rutas
+  const fileNameOnly = useMemo(() => {
+    return fileData.file.name.split(/[\\/]/).pop() || "";
+  }, [fileData.file.name]);
+
   const handleDownload = () => {
     if (!fileData.markdownContent) return;
     const blob = new Blob([fileData.markdownContent], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${fileData.file.name.replace(/\.[^/.]+$/, "")}_extracted.md`;
+    a.download = `${fileNameOnly.replace(/\.[^/.]+$/, "")}_extracted.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -64,7 +69,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({ fileData, onProcess }) =
       {/* Header */}
       <div className="bg-white border-b border-slate-200 p-6 flex justify-between items-center shadow-sm">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">{fileData.file.name.replace(/\.[^/.]+$/, "")}</h2>
+          <h2 className="text-xl font-bold text-slate-800">{fileNameOnly.replace(/\.[^/.]+$/, "")}</h2>
           <span className={`text-xs px-2 py-1 rounded-full font-medium ${
             fileData.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
             fileData.status === 'error' ? 'bg-red-100 text-red-700' :
@@ -75,13 +80,13 @@ export const FileDetail: React.FC<FileDetailProps> = ({ fileData, onProcess }) =
           </span>
         </div>
         <div className="flex gap-3">
-          {fileData.status !== 'processing' && (
+          {(fileData.status === 'pending' || fileData.status === 'error') && (
             <button 
               onClick={() => onProcess(fileData.id)}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded hover:bg-slate-50 transition-colors"
             >
               <Play size={16} />
-              {fileData.status === 'completed' ? 'Reprocesar' : 'Procesar'}
+              Procesar
             </button>
           )}
           {fileData.status === 'completed' && (
@@ -205,6 +210,15 @@ export const FileDetail: React.FC<FileDetailProps> = ({ fileData, onProcess }) =
           <div className="h-full flex flex-col items-center justify-center text-slate-400">
             <Play size={48} className="mb-4 opacity-20" />
             <p>El archivo está listo para ser procesado.</p>
+          </div>
+        )}
+
+        {fileData.status === 'processing' && (
+          <div className="h-full flex flex-col items-center justify-center text-slate-400">
+            <div className="animate-spin mb-4">
+              <Play size={48} className="opacity-20" />
+            </div>
+            <p>Procesando fondo...</p>
           </div>
         )}
       </div>

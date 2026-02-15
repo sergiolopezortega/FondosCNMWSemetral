@@ -28,8 +28,12 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ files }) => {
         // Skip records without valid ISIN to avoid grouping unrelated "N/A" items
         if (!record.isin || record.isin === 'N/A') return;
 
+        // Limpiar el nombre del archivo de cualquier path
+        const baseFileName = file.file.name.split(/[\\/]/).pop() || "";
+        const cleanFileName = baseFileName.replace(/\.[^/.]+$/, "");
+
         const entry = {
-          fileName: file.file.name.replace(/\.[^/.]+$/, ""),
+          fileName: cleanFileName,
           currentWeight: record.currentWeight,
           previousWeight: record.previousWeight
         };
@@ -50,7 +54,12 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ files }) => {
       }
     });
 
-    return result.sort((a, b) => a.stockName.localeCompare(b.stockName));
+    // Sort by number of occurrences (descending), then by name as secondary sort
+    return result.sort((a, b) => {
+      const diff = b.occurrences.length - a.occurrences.length;
+      if (diff !== 0) return diff;
+      return a.stockName.localeCompare(b.stockName);
+    });
   }, [files]);
 
   if (coincidences.length === 0) {
@@ -72,7 +81,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ files }) => {
           Análisis de Coincidencias (por ISIN)
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Se encontraron {coincidences.length} acciones (identificadas por ISIN) presentes en al menos dos fondos.
+          Se encontraron {coincidences.length} acciones (identificadas por ISIN) presentes en al menos dos fondos. Ordenadas por mayor número de coincidencias.
         </p>
       </div>
 

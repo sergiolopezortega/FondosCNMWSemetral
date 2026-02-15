@@ -56,6 +56,12 @@ export const parseXBRLContent = (xmlContent: string): ParsedRecord[] => {
     // Clean text: remove "ACCIONES|"
     name = name.replace(/^ACCIONES\|/i, "").trim();
 
+    // Filtro solicitado: descartar el registro si el nombre coincide con los excluidos
+    const upperName = name.toUpperCase();
+    if (upperName === "RESTO RENTA VARIABLE EXTERIOR" || upperName === "RESTO RENTA VARIABLE INTERIOR") {
+      continue;
+    }
+
     // 2. ISIN: <iic-com:CodigoISIN>
     const isinNode = findTag("iic-com:CodigoISIN");
     const isin = isinNode?.textContent?.trim() || "N/A";
