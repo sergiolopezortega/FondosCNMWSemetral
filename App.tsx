@@ -86,7 +86,7 @@ const App: React.FC = () => {
     for (const path of pathsToTry) {
       try {
         console.log(`Intentando cargar desde: ${path}`);
-        const response = await fetch(`${import.meta.env.BASE_URL}path`);
+        const response = await fetch(`${import.meta.env.BASE_URL}fondosfiles.zip`);
         
         if (response.ok) {
           const contentType = response.headers.get('content-type') || '';
