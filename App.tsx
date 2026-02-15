@@ -75,7 +75,7 @@ const App: React.FC = () => {
     setLoadError(null);
     
     const pathsToTry = [
-      '/fondosfiles.zip'
+      'fondosfiles.zip'
     ];
     
     setTriedPaths(pathsToTry);
