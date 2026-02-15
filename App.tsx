@@ -75,8 +75,7 @@ const App: React.FC = () => {
     setLoadError(null);
     
     const pathsToTry = [
-      './public/fondosfiles.zip',
-      './fondosfiles.zip'
+      '/fondosfiles.zip'
     ];
     
     setTriedPaths(pathsToTry);
@@ -86,7 +85,7 @@ const App: React.FC = () => {
     for (const path of pathsToTry) {
       try {
         console.log(`Intentando cargar desde: ${path}`);
-        const response = await fetch(`${import.meta.env.BASE_URL}fondosfiles.zip`);
+        const response = await fetch(path);
         
         if (response.ok) {
           const contentType = response.headers.get('content-type') || '';
@@ -125,12 +124,12 @@ const App: React.FC = () => {
           }
         }
       } catch (err) {
-        console.error(`Error en ruta ${import.meta.env.BASE_URL}fondosfiles.zip`, err);
+        console.error(`Error en ruta ${path}:`, err);
       }
     }
 
     if (!success) {
-      setLoadError(`No se pudo localizar el archivo ZIP automáticamente en la ruta: ${import.meta.env.BASE_URL}fondosfiles.zip`);
+      setLoadError(`No se pudo localizar el archivo ZIP automáticamente. Revisa que fondosfiles.zip esté en la raíz o en la carpeta public.`);
     }
     
     setIsLoading(false);
