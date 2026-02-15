@@ -7,6 +7,12 @@ export interface ParsedRecord {
   previousWeight: string;
 }
 
+export interface PatrimonioDistribution {
+  inversionesFinancieras: { actual: number; previous: number };
+  liquidez: { actual: number; previous: number };
+  resto: { actual: number; previous: number };
+}
+
 export type ProcessingStatus = 'pending' | 'processing' | 'completed' | 'error';
 
 export interface FileData {
@@ -14,12 +20,12 @@ export interface FileData {
   file: File;
   status: ProcessingStatus;
   records: ParsedRecord[];
+  distribution?: PatrimonioDistribution;
   markdownContent: string | null;
   errorMessage?: string;
 }
 
 // Augment InputHTMLAttributes to allow webkitdirectory
-// Fix: Using 'declare module "react"' requires a robust import to ensure the module is found during augmentation
 declare module 'react' {
   interface InputHTMLAttributes<T> {
     webkitdirectory?: string | boolean;

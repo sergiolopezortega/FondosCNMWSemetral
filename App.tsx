@@ -19,7 +19,7 @@ const App: React.FC = () => {
   const performFileProcessing = async (fileData: FileData): Promise<Partial<FileData>> => {
     try {
       const text = await fileData.file.text();
-      const records = parseXBRLContent(text);
+      const { records, distribution } = parseXBRLContent(text);
       
       // Asegurar nombre limpio para el markdown
       const cleanName = fileData.file.name.split(/[\\/]/).pop() || fileData.file.name;
@@ -28,6 +28,7 @@ const App: React.FC = () => {
       return {
         status: 'completed',
         records,
+        distribution,
         markdownContent: markdown
       };
     } catch (error) {
