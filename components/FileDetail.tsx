@@ -200,13 +200,19 @@ export const FileDetail: React.FC<FileDetailProps> = ({ fileData, onProcess, onB
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {sortedRecords.length > 0 ? (
-                      sortedRecords.map((record, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50">
-                          <td className="px-6 py-3 font-medium text-slate-900">{record.name}</td>
-                          <td className="px-6 py-3 text-right font-mono text-slate-600">{record.currentWeight}</td>
-                          <td className="px-6 py-3 text-right font-mono text-slate-600">{record.previousWeight}</td>
-                        </tr>
-                      ))
+                      sortedRecords.map((record, idx) => {
+                        const isDecreased = parseValue(record.currentWeight) < parseValue(record.previousWeight);
+                        return (
+                          <tr 
+                            key={idx} 
+                            className={isDecreased ? 'bg-rose-50 hover:bg-rose-100/70 transition-colors' : 'hover:bg-slate-50 transition-colors'}
+                          >
+                            <td className="px-6 py-3 font-medium text-slate-900">{record.name}</td>
+                            <td className="px-6 py-3 text-right font-mono text-slate-600">{record.currentWeight}</td>
+                            <td className="px-6 py-3 text-right font-mono text-slate-600">{record.previousWeight}</td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400 italic">Sin registros.</td></tr>
                     )}
@@ -216,23 +222,29 @@ export const FileDetail: React.FC<FileDetailProps> = ({ fileData, onProcess, onB
                 {/* Vista Móvil: Lista de bloques sin scroll horizontal */}
                 <div className="md:hidden divide-y divide-slate-100">
                   {sortedRecords.length > 0 ? (
-                    sortedRecords.map((record, idx) => (
-                      <div key={idx} className="p-4 flex flex-col gap-2 hover:bg-slate-50">
-                        <div className="text-sm font-bold text-slate-900 leading-tight">
-                          {record.name}
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <div className="flex flex-col">
-                            <span className="text-slate-400 uppercase font-semibold">Peso Actual</span>
-                            <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{record.currentWeight}</span>
+                    sortedRecords.map((record, idx) => {
+                      const isDecreased = parseValue(record.currentWeight) < parseValue(record.previousWeight);
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`p-4 flex flex-col gap-2 transition-colors ${isDecreased ? 'bg-rose-50 hover:bg-rose-100/70' : 'hover:bg-slate-50'}`}
+                        >
+                          <div className="text-sm font-bold text-slate-900 leading-tight">
+                            {record.name}
                           </div>
-                          <div className="flex flex-col items-end">
-                            <span className="text-slate-400 uppercase font-semibold">Peso Anterior</span>
-                            <span className="font-mono text-slate-500">{record.previousWeight}</span>
+                          <div className="flex justify-between items-center text-[11px]">
+                            <div className="flex flex-col">
+                              <span className="text-slate-400 uppercase font-semibold">Peso Actual</span>
+                              <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{record.currentWeight}</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-slate-400 uppercase font-semibold">Peso Anterior</span>
+                              <span className="font-mono text-slate-500">{record.previousWeight}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="p-8 text-center text-slate-400 italic text-sm">Sin registros.</div>
                   )}
