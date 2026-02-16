@@ -19,6 +19,12 @@ interface Coincidence {
 }
 
 export const AnalysisView: React.FC<AnalysisViewProps> = ({ files, onBack }) => {
+  const parseValue = (val: string): number => {
+    if (!val || val === 'N/A') return 0;
+    const num = parseFloat(val.replace(',', '.'));
+    return isNaN(num) ? 0 : num;
+  };
+
   const coincidences = useMemo(() => {
     const stockMap = new Map<string, { name: string; occurrences: Coincidence['occurrences'] }>();
 
@@ -100,35 +106,47 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ files, onBack }) => 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {item.occurrences.map((occ, occIdx) => (
-                    <tr key={occIdx} className="hover:bg-slate-50">
-                      <td className="px-4 py-2 font-medium text-slate-800 truncate">{occ.fileName}</td>
-                      <td className="px-4 py-2 text-right font-mono text-slate-600">{occ.currentWeight}</td>
-                      <td className="px-4 py-2 text-right font-mono text-slate-600">{occ.previousWeight}</td>
-                    </tr>
-                  ))}
+                  {item.occurrences.map((occ, occIdx) => {
+                    const isDecreased = parseValue(occ.currentWeight) < parseValue(occ.previousWeight);
+                    return (
+                      <tr 
+                        key={occIdx} 
+                        className={isDecreased ? 'bg-rose-50 hover:bg-rose-100/70 transition-colors' : 'hover:bg-slate-50 transition-colors'}
+                      >
+                        <td className="px-4 py-2 font-medium text-slate-800 truncate">{occ.fileName}</td>
+                        <td className="px-4 py-2 text-right font-mono text-slate-600">{occ.currentWeight}</td>
+                        <td className="px-4 py-2 text-right font-mono text-slate-600">{occ.previousWeight}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 
               {/* Vista Móvil: Bloques apilados sin scroll horizontal */}
               <div className="md:hidden divide-y divide-slate-100">
-                {item.occurrences.map((occ, occIdx) => (
-                  <div key={occIdx} className="p-4 flex flex-col gap-2 hover:bg-slate-50">
-                    <div className="text-xs font-bold text-slate-800 leading-tight truncate">
-                      {occ.fileName}
-                    </div>
-                    <div className="flex justify-between items-center text-[10px]">
-                      <div className="flex flex-col">
-                        <span className="text-slate-400 uppercase font-semibold">Peso Actual</span>
-                        <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{occ.currentWeight}</span>
+                {item.occurrences.map((occ, occIdx) => {
+                  const isDecreased = parseValue(occ.currentWeight) < parseValue(occ.previousWeight);
+                  return (
+                    <div 
+                      key={occIdx} 
+                      className={`p-4 flex flex-col gap-2 transition-colors ${isDecreased ? 'bg-rose-50 hover:bg-rose-100/70' : 'hover:bg-slate-50'}`}
+                    >
+                      <div className="text-xs font-bold text-slate-800 leading-tight truncate">
+                        {occ.fileName}
                       </div>
-                      <div className="flex flex-col items-end">
-                        <span className="text-slate-400 uppercase font-semibold">Peso Anterior</span>
-                        <span className="font-mono text-slate-500">{occ.previousWeight}</span>
+                      <div className="flex justify-between items-center text-[10px]">
+                        <div className="flex flex-col">
+                          <span className="text-slate-400 uppercase font-semibold">Peso Actual</span>
+                          <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{occ.currentWeight}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-slate-400 uppercase font-semibold">Peso Anterior</span>
+                          <span className="font-mono text-slate-500">{occ.previousWeight}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
