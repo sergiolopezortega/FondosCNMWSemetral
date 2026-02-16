@@ -146,35 +146,45 @@ const App: React.FC = () => {
   return (
     <div className="h-screen flex flex-col bg-slate-100 overflow-hidden">
       <header className="bg-primary text-white p-3 md:p-4 shadow-md flex justify-between items-center z-20 border-b border-slate-800">
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
           {(isDetailViewActive || isAnalysisViewActive) && (
             <button 
               onClick={() => { setSelectedFileId(null); setViewMode('detail'); }}
-              className="md:hidden p-1 -ml-1 hover:bg-slate-800 rounded-full"
+              className="md:hidden p-1 -ml-1 hover:bg-slate-800 rounded-full flex-shrink-0"
             >
               <ChevronLeft size={24} />
             </button>
           )}
-          <div className="bg-accent p-1.5 md:p-2 rounded-lg shadow-lg shadow-blue-500/20">
+          <div className="bg-accent p-1.5 md:p-2 rounded-lg shadow-lg shadow-blue-500/20 flex-shrink-0">
             <BarChart3 size={20} className="text-white md:w-6 md:h-6" />
           </div>
-          <h1 className="text-sm md:text-xl font-bold tracking-tight truncate max-w-[150px] md:max-w-none">
-            Analizador Fondos
-          </h1>
+          <div className="flex flex-col min-w-0">
+            <h1 className="text-sm md:text-xl font-bold tracking-tight truncate leading-tight">
+              Analizador Fondos
+            </h1>
+            <div className="mt-0.5">
+              <p className="text-[9px] md:text-xs font-medium opacity-90 leading-tight truncate">
+                Periodo de referencia: 1 de julio de 2025 al 31 de diciembre de 2025
+              </p>
+              <p className="text-[8px] md:text-[10px] opacity-70 leading-tight truncate font-light">
+                Datos recogidos de la CNMV correspondientes al primer semestre de 2025
+              </p>
+            </div>
+          </div>
         </div>
         
         {files.length > 0 && (
           <button 
             onClick={() => setViewMode('analysis')}
-            className={`flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 rounded-lg font-bold transition-all duration-200 shadow-lg text-xs md:text-sm ${
+            className={`flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 rounded-lg font-bold transition-all duration-200 shadow-lg text-xs md:text-sm flex-shrink-0 ml-2 ${
               viewMode === 'analysis'
                 ? 'bg-blue-700 text-white ring-2 ring-white/30 translate-y-0.5'
                 : 'bg-accent hover:bg-blue-500 text-white shadow-blue-500/20'
             }`}
           >
             <Layers size={16} className={viewMode === 'analysis' ? 'animate-pulse' : ''} />
-            <span className="hidden xs:inline">Comparativa</span>
-            <span className="xs:hidden">Comparativa</span>
+            <span className="hidden sm:inline">Comparativa</span>
+            <span className="sm:hidden">Comparativa</span>
           </button>
         )}
       </header>
