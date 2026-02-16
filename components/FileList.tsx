@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { FileData } from '../types';
 import { FileText, CheckCircle2, Circle, AlertCircle, Loader2 } from 'lucide-react';
@@ -10,16 +11,15 @@ interface FileListProps {
 
 export const FileList: React.FC<FileListProps> = ({ files, selectedId, onSelect }) => {
   return (
-    <div className="w-80 border-r border-slate-200 bg-white h-full flex flex-col">
+    <div className="w-full h-full bg-white flex flex-col border-r border-slate-200">
       <div className="p-4 border-b border-slate-200 bg-slate-50">
         <h3 className="font-semibold text-slate-700 flex items-center gap-2">
           <FileText size={18} />
           Fondos ({files.length})
         </h3>
       </div>
-      <div className="overflow-y-auto flex-1">
+      <div className="overflow-y-auto flex-1 pb-20 md:pb-0">
         {files.map((file) => {
-          // Extraer solo el nombre del archivo (quitar paths si existen)
           const baseName = file.file.name.split(/[\\/]/).pop() || "";
           const displayName = baseName.replace(/\.[^/.]+$/, "");
 
@@ -27,7 +27,7 @@ export const FileList: React.FC<FileListProps> = ({ files, selectedId, onSelect 
             <button
               key={file.id}
               onClick={() => onSelect(file.id)}
-              className={`w-full text-left p-3 border-b border-slate-100 flex items-center gap-3 hover:bg-slate-50 transition-colors ${
+              className={`w-full text-left p-4 md:p-3 border-b border-slate-100 flex items-center gap-3 hover:bg-slate-50 transition-colors ${
                 selectedId === file.id ? 'bg-blue-50 border-l-4 border-l-accent' : 'border-l-4 border-l-transparent'
               }`}
             >
@@ -38,8 +38,11 @@ export const FileList: React.FC<FileListProps> = ({ files, selectedId, onSelect 
                 {file.status === 'error' && <AlertCircle size={18} className="text-red-500" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium truncate ${selectedId === file.id ? 'text-blue-700' : 'text-slate-700'}`}>
+                <p className={`text-sm md:text-sm font-medium truncate ${selectedId === file.id ? 'text-blue-700 font-bold' : 'text-slate-700'}`}>
                   {displayName}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate uppercase mt-0.5">
+                  {file.status}
                 </p>
               </div>
             </button>

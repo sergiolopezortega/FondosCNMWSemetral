@@ -1,10 +1,11 @@
 
 import React, { useMemo } from 'react';
 import { FileData } from '../types';
-import { Layers, AlertCircle } from 'lucide-react';
+import { Layers, ChevronLeft } from 'lucide-react';
 
 interface AnalysisViewProps {
   files: FileData[];
+  onBack?: () => void;
 }
 
 interface Coincidence {
@@ -17,28 +18,17 @@ interface Coincidence {
   }[];
 }
 
-export const AnalysisView: React.FC<AnalysisViewProps> = ({ files }) => {
+export const AnalysisView: React.FC<AnalysisViewProps> = ({ files, onBack }) => {
   const coincidences = useMemo(() => {
-    // Map key: ISIN
     const stockMap = new Map<string, { name: string; occurrences: Coincidence['occurrences'] }>();
 
     files.forEach(file => {
       if (file.status !== 'completed') return;
-
       file.records.forEach(record => {
-        // Skip records without valid ISIN to avoid grouping unrelated "N/A" items
         if (!record.isin || record.isin === 'N/A') return;
-
-        // Limpiar el nombre del archivo de cualquier path
         const baseFileName = file.file.name.split(/[\\/]/).pop() || "";
         const cleanFileName = baseFileName.replace(/\.[^/.]+$/, "");
-
-        const entry = {
-          fileName: cleanFileName,
-          currentWeight: record.currentWeight,
-          previousWeight: record.previousWeight
-        };
-
+        const entry = { fileName: cleanFileName, currentWeight: record.currentWeight, previousWeight: record.previousWeight };
         if (stockMap.has(record.isin)) {
           stockMap.get(record.isin)?.occurrences.push(entry);
         } else {
@@ -47,7 +37,6 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ files }) => {
       });
     });
 
-    // Filter for >= 2 occurrences
     const result: Coincidence[] = [];
     stockMap.forEach((val, isin) => {
       if (val.occurrences.length >= 2) {
@@ -55,68 +44,93 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ files }) => {
       }
     });
 
-    // Sort by number of occurrences (descending), then by name as secondary sort
-    return result.sort((a, b) => {
-      const diff = b.occurrences.length - a.occurrences.length;
-      if (diff !== 0) return diff;
-      return a.stockName.localeCompare(b.stockName);
-    });
+    return result.sort((a, b) => b.occurrences.length - a.occurrences.length);
   }, [files]);
 
   if (coincidences.length === 0) {
     return (
-      <div className="flex-1 h-full flex flex-col items-center justify-center bg-slate-50 text-slate-500">
-        <Layers size={48} className="mb-4 opacity-20" />
-        <p className="text-lg font-medium">No se encontraron coincidencias por ISIN.</p>
-        <p className="text-sm">Asegúrate de procesar varios archivos que contengan las mismas acciones con códigos ISIN válidos.</p>
+      <div className="flex-1 h-full flex flex-col items-center justify-center bg-slate-50 p-6 text-center text-slate-500">
+        <Layers size={48} className="mb-4 opacity-10" />
+        <p className="font-medium">No hay coincidencias.</p>
+        <button onClick={onBack} className="mt-4 md:hidden text-accent font-bold">Volver</button>
       </div>
     );
   }
 
   return (
     <div className="flex-1 h-full flex flex-col bg-slate-50 overflow-hidden">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-          <Layers className="text-accent" />
-          Análisis de Coincidencias (por ISIN)
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Se encontraron {coincidences.length} acciones (identificadas por ISIN) presentes en al menos dos fondos. Ordenadas por mayor número de coincidencias.
+      <div className="bg-white border-b border-slate-200 p-4 md:p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          {onBack && (
+            <button onClick={onBack} className="md:hidden p-2 -ml-2 text-slate-500">
+              <ChevronLeft size={20} />
+            </button>
+          )}
+          <h2 className="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-2">
+            <Layers className="text-accent hidden md:inline" size={20} />
+            Coincidencias
+          </h2>
+        </div>
+        <p className="text-[10px] md:text-sm text-slate-500">
+          {coincidences.length} acciones presentes en 2 o más fondos.
         </p>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-6 space-y-8">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 pb-24 md:pb-6">
         {coincidences.map((item, idx) => (
           <div key={idx} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
-              <div>
-                 <h3 className="font-bold text-slate-700">{item.stockName}</h3>
-                 <span className="text-xs font-mono text-slate-400">ISIN: {item.isin}</span>
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center gap-2">
+              <div className="min-w-0">
+                 <h3 className="font-bold text-slate-700 text-xs md:text-sm truncate">{item.stockName}</h3>
+                 <span className="text-[10px] font-mono text-slate-400">{item.isin}</span>
               </div>
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+              <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
                 {item.occurrences.length} Fondos
               </span>
             </div>
-            <table className="w-full text-sm text-left table-fixed">
-              <thead className="text-xs text-slate-500 uppercase bg-white border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-3 font-semibold">Fondo</th>
-                  <th className="px-6 py-3 text-right font-semibold w-40">Peso Actual</th>
-                  <th className="px-6 py-3 text-right font-semibold w-40">Peso Anterior</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {item.occurrences.map((occ, occIdx) => (
-                  <tr key={occIdx} className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-medium text-slate-800 truncate" title={occ.fileName}>{occ.fileName}</td>
-                    <td className="px-6 py-3 text-right font-mono text-slate-600 w-40">{occ.currentWeight}</td>
-                    <td className="px-6 py-3 text-right font-mono text-slate-600 w-40">{occ.previousWeight}</td>
+            
+            <div className="w-full">
+              {/* Vista Escritorio: Tabla */}
+              <table className="hidden md:table w-full text-sm text-left">
+                <thead className="bg-white border-b border-slate-100 text-slate-400 text-xs uppercase">
+                  <tr>
+                    <th className="px-4 py-2 font-semibold">Fondo</th>
+                    <th className="px-4 py-2 text-right w-32">Peso Actual</th>
+                    <th className="px-4 py-2 text-right w-32">Peso Anterior</th>
                   </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {item.occurrences.map((occ, occIdx) => (
+                    <tr key={occIdx} className="hover:bg-slate-50">
+                      <td className="px-4 py-2 font-medium text-slate-800 truncate">{occ.fileName}</td>
+                      <td className="px-4 py-2 text-right font-mono text-slate-600">{occ.currentWeight}</td>
+                      <td className="px-4 py-2 text-right font-mono text-slate-600">{occ.previousWeight}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Vista Móvil: Bloques apilados sin scroll horizontal */}
+              <div className="md:hidden divide-y divide-slate-100">
+                {item.occurrences.map((occ, occIdx) => (
+                  <div key={occIdx} className="p-4 flex flex-col gap-2 hover:bg-slate-50">
+                    <div className="text-xs font-bold text-slate-800 leading-tight truncate">
+                      {occ.fileName}
+                    </div>
+                    <div className="flex justify-between items-center text-[10px]">
+                      <div className="flex flex-col">
+                        <span className="text-slate-400 uppercase font-semibold">Peso Actual</span>
+                        <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{occ.currentWeight}</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-slate-400 uppercase font-semibold">Peso Anterior</span>
+                        <span className="font-mono text-slate-500">{occ.previousWeight}</span>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
         ))}
       </div>
