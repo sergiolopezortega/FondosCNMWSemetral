@@ -1,5 +1,6 @@
 {
   "name": "Analisis Fondos Semestral",
   "description": "A specialized tool for processing financial XBRL files to extract Quoted Equity data into Markdown format.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }

@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { FileData } from '../types';
 import { Download, Play, AlertTriangle, Eye, EyeOff, ArrowUpDown, PieChart, ChevronLeft } from 'lucide-react';
+import { TrendIcon } from './TrendIcon';
 
 interface FileDetailProps {
   fileData: FileData;
@@ -193,6 +194,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({ fileData, onProcess, onB
                 <table className="hidden md:table w-full text-sm text-left">
                   <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0">
                     <tr>
+                      <th className="w-14 px-3 py-3 text-center"></th>
                       <th className="px-6 py-3">Acción</th>
                       <th className="px-6 py-3 text-right">Peso Actual</th>
                       <th className="px-6 py-3 text-right">Peso Anterior</th>
@@ -201,12 +203,26 @@ export const FileDetail: React.FC<FileDetailProps> = ({ fileData, onProcess, onB
                   <tbody className="divide-y divide-slate-100">
                     {sortedRecords.length > 0 ? (
                       sortedRecords.map((record, idx) => {
-                        const isDecreased = parseValue(record.currentWeight) < parseValue(record.previousWeight);
+                        const cur = parseValue(record.currentWeight);
+                        const prev = parseValue(record.previousWeight);
+                        
+                        let rowBgClass = 'hover:bg-slate-50 transition-colors';
+                        if (cur === 0) {
+                          rowBgClass = 'bg-rose-50 hover:bg-rose-100/70 transition-colors';
+                        } else if (prev === 0) {
+                          rowBgClass = 'bg-emerald-50 hover:bg-emerald-100/70 transition-colors';
+                        }
+
                         return (
                           <tr 
                             key={idx} 
-                            className={isDecreased ? 'bg-rose-50 hover:bg-rose-100/70 transition-colors' : 'hover:bg-slate-50 transition-colors'}
+                            className={rowBgClass}
                           >
+                            <td className="w-14 px-3 py-3 text-center align-middle">
+                              <div className="flex items-center justify-center">
+                                <TrendIcon currentWeight={record.currentWeight} previousWeight={record.previousWeight} />
+                              </div>
+                            </td>
                             <td className="px-6 py-3 font-medium text-slate-900">{record.name}</td>
                             <td className="px-6 py-3 text-right font-mono text-slate-600">{record.currentWeight}</td>
                             <td className="px-6 py-3 text-right font-mono text-slate-600">{record.previousWeight}</td>
@@ -214,7 +230,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({ fileData, onProcess, onB
                         );
                       })
                     ) : (
-                      <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400 italic">Sin registros.</td></tr>
+                      <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400 italic">Sin registros.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -223,14 +239,24 @@ export const FileDetail: React.FC<FileDetailProps> = ({ fileData, onProcess, onB
                 <div className="md:hidden divide-y divide-slate-100">
                   {sortedRecords.length > 0 ? (
                     sortedRecords.map((record, idx) => {
-                      const isDecreased = parseValue(record.currentWeight) < parseValue(record.previousWeight);
+                      const cur = parseValue(record.currentWeight);
+                      const prev = parseValue(record.previousWeight);
+                      
+                      let cardBgClass = 'hover:bg-slate-50';
+                      if (cur === 0) {
+                        cardBgClass = 'bg-rose-50 hover:bg-rose-100/70';
+                      } else if (prev === 0) {
+                        cardBgClass = 'bg-emerald-50 hover:bg-emerald-100/70';
+                      }
+
                       return (
                         <div 
                           key={idx} 
-                          className={`p-4 flex flex-col gap-2 transition-colors ${isDecreased ? 'bg-rose-50 hover:bg-rose-100/70' : 'hover:bg-slate-50'}`}
+                          className={`p-4 flex flex-col gap-2 transition-colors ${cardBgClass}`}
                         >
-                          <div className="text-sm font-bold text-slate-900 leading-tight">
-                            {record.name}
+                          <div className="text-sm font-bold text-slate-900 leading-tight flex items-center gap-2">
+                            <TrendIcon currentWeight={record.currentWeight} previousWeight={record.previousWeight} />
+                            <span>{record.name}</span>
                           </div>
                           <div className="flex justify-between items-center text-[11px]">
                             <div className="flex flex-col">

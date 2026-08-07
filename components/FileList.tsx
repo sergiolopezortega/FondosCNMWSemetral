@@ -2,6 +2,7 @@
 import React from 'react';
 import { FileData } from '../types';
 import { FileText, CheckCircle2, Circle, AlertCircle, Loader2 } from 'lucide-react';
+import { cleanFundName } from '../utils/correlation';
 
 interface FileListProps {
   files: FileData[];
@@ -20,8 +21,7 @@ export const FileList: React.FC<FileListProps> = ({ files, selectedId, onSelect 
       </div>
       <div className="overflow-y-auto flex-1 pb-20 md:pb-0">
         {files.map((file) => {
-          const baseName = file.file.name.split(/[\\/]/).pop() || "";
-          const displayName = baseName.replace(/\.[^/.]+$/, "");
+          const displayName = cleanFundName(file.file.name);
 
           return (
             <button
@@ -41,9 +41,11 @@ export const FileList: React.FC<FileListProps> = ({ files, selectedId, onSelect 
                 <p className={`text-sm md:text-sm font-medium truncate ${selectedId === file.id ? 'text-blue-700 font-bold' : 'text-slate-700'}`}>
                   {displayName}
                 </p>
-                <p className="text-[10px] text-slate-400 truncate uppercase mt-0.5">
-                  {file.status}
-                </p>
+                {file.status !== 'completed' && (
+                  <p className="text-[10px] text-slate-400 truncate uppercase mt-0.5">
+                    {file.status}
+                  </p>
+                )}
               </div>
             </button>
           );

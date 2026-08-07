@@ -2,6 +2,8 @@
 import React, { useMemo } from 'react';
 import { FileData } from '../types';
 import { Layers, ChevronLeft } from 'lucide-react';
+import { TrendIcon } from './TrendIcon';
+import { cleanFundName } from '../utils/correlation';
 
 interface AnalysisViewProps {
   files: FileData[];
@@ -32,8 +34,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ files, onBack }) => 
       if (file.status !== 'completed') return;
       file.records.forEach(record => {
         if (!record.isin || record.isin === 'N/A') return;
-        const baseFileName = file.file.name.split(/[\\/]/).pop() || "";
-        const cleanFileName = baseFileName.replace(/\.[^/.]+$/, "");
+        const cleanFileName = cleanFundName(file.file.name);
         const entry = { fileName: cleanFileName, currentWeight: record.currentWeight, previousWeight: record.previousWeight };
         if (stockMap.has(record.isin)) {
           stockMap.get(record.isin)?.occurrences.push(entry);
@@ -100,6 +101,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ files, onBack }) => 
               <table className="hidden md:table w-full text-sm text-left">
                 <thead className="bg-white border-b border-slate-100 text-slate-400 text-xs uppercase">
                   <tr>
+                    <th className="w-14 px-3 py-2 text-center"></th>
                     <th className="px-4 py-2 font-semibold">Fondo</th>
                     <th className="px-4 py-2 text-right w-32">Peso Actual</th>
                     <th className="px-4 py-2 text-right w-32">Peso Anterior</th>
@@ -107,12 +109,26 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ files, onBack }) => 
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {item.occurrences.map((occ, occIdx) => {
-                    const isDecreased = parseValue(occ.currentWeight) < parseValue(occ.previousWeight);
+                    const cur = parseValue(occ.currentWeight);
+                    const prev = parseValue(occ.previousWeight);
+
+                    let rowBgClass = 'hover:bg-slate-50 transition-colors';
+                    if (cur === 0) {
+                      rowBgClass = 'bg-rose-50 hover:bg-rose-100/70 transition-colors';
+                    } else if (prev === 0) {
+                      rowBgClass = 'bg-emerald-50 hover:bg-emerald-100/70 transition-colors';
+                    }
+
                     return (
                       <tr 
                         key={occIdx} 
-                        className={isDecreased ? 'bg-rose-50 hover:bg-rose-100/70 transition-colors' : 'hover:bg-slate-50 transition-colors'}
+                        className={rowBgClass}
                       >
+                        <td className="w-14 px-3 py-2 text-center align-middle">
+                          <div className="flex items-center justify-center">
+                            <TrendIcon currentWeight={occ.currentWeight} previousWeight={occ.previousWeight} />
+                          </div>
+                        </td>
                         <td className="px-4 py-2 font-medium text-slate-800 truncate">{occ.fileName}</td>
                         <td className="px-4 py-2 text-right font-mono text-slate-600">{occ.currentWeight}</td>
                         <td className="px-4 py-2 text-right font-mono text-slate-600">{occ.previousWeight}</td>
@@ -125,14 +141,24 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ files, onBack }) => 
               {/* Vista Móvil: Bloques apilados sin scroll horizontal */}
               <div className="md:hidden divide-y divide-slate-100">
                 {item.occurrences.map((occ, occIdx) => {
-                  const isDecreased = parseValue(occ.currentWeight) < parseValue(occ.previousWeight);
+                  const cur = parseValue(occ.currentWeight);
+                  const prev = parseValue(occ.previousWeight);
+
+                  let cardBgClass = 'hover:bg-slate-50';
+                  if (cur === 0) {
+                    cardBgClass = 'bg-rose-50 hover:bg-rose-100/70';
+                  } else if (prev === 0) {
+                    cardBgClass = 'bg-emerald-50 hover:bg-emerald-100/70';
+                  }
+
                   return (
                     <div 
                       key={occIdx} 
-                      className={`p-4 flex flex-col gap-2 transition-colors ${isDecreased ? 'bg-rose-50 hover:bg-rose-100/70' : 'hover:bg-slate-50'}`}
+                      className={`p-4 flex flex-col gap-2 transition-colors ${cardBgClass}`}
                     >
-                      <div className="text-xs font-bold text-slate-800 leading-tight truncate">
-                        {occ.fileName}
+                      <div className="text-xs font-bold text-slate-800 leading-tight truncate flex items-center gap-2">
+                        <TrendIcon currentWeight={occ.currentWeight} previousWeight={occ.previousWeight} />
+                        <span className="truncate">{occ.fileName}</span>
                       </div>
                       <div className="flex justify-between items-center text-[10px]">
                         <div className="flex flex-col">

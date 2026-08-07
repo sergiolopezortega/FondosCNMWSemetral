@@ -6,8 +6,11 @@ import { EmptyState } from './components/EmptyState.tsx';
 import { FileList } from './components/FileList.tsx';
 import { FileDetail } from './components/FileDetail.tsx';
 import { AnalysisView } from './components/AnalysisView.tsx';
+import { CorrelationView } from './components/CorrelationView.tsx';
+import { AdminModal } from './components/AdminModal.tsx';
+import { ChangePasswordModal } from './components/ChangePasswordModal.tsx';
 import { parseXBRLContent, generateMarkdown } from './utils/parser.ts';
-import { BarChart3, Layers, ChevronLeft } from 'lucide-react';
+import { BarChart3, Layers, ChevronLeft, RefreshCw, Upload, ShieldCheck, LogOut, Lock, KeyRound, Network } from 'lucide-react';
 
 const App: React.FC = () => {
   const [files, setFiles] = useState<FileData[]>([]);
@@ -15,7 +18,48 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [triedPaths, setTriedPaths] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'detail' | 'analysis'>('detail');
+  const [viewMode, setViewMode] = useState<'detail' | 'analysis' | 'correlation'>('detail');
+
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    return localStorage.getItem('isAdmin') === 'true' || sessionStorage.getItem('isAdmin') === 'true';
+  });
+  const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkAdminRoute = () => {
+      const pathname = window.location.pathname;
+      const hash = window.location.hash;
+      if (pathname === '/admin' || pathname.startsWith('/admin') || hash === '#admin') {
+        setShowAdminModal(true);
+      }
+    };
+
+    checkAdminRoute();
+
+    window.addEventListener('popstate', checkAdminRoute);
+    window.addEventListener('hashchange', checkAdminRoute);
+
+    return () => {
+      window.removeEventListener('popstate', checkAdminRoute);
+      window.removeEventListener('hashchange', checkAdminRoute);
+    };
+  }, []);
+
+  const handleAdminSuccess = () => {
+    setIsAdmin(true);
+    localStorage.setItem('isAdmin', 'true');
+    setShowAdminModal(false);
+    if (window.location.pathname.startsWith('/admin') || window.location.hash === '#admin') {
+      window.history.pushState({}, '', '/');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdmin(false);
+    localStorage.removeItem('isAdmin');
+    sessionStorage.removeItem('isAdmin');
+  };
 
   const performFileProcessing = async (fileData: FileData): Promise<Partial<FileData>> => {
     try {
@@ -74,14 +118,23 @@ const App: React.FC = () => {
   const handleLoadZip = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
-    const pathsToTry = ['/fondosfiles.zip'];
+    const pathsToTry = [
+      '/fondosfiles.zip',
+      '/fondosFiles.zip',
+      '/files.zip',
+      '/fondos.zip'
+    ];
     setTriedPaths(pathsToTry);
 
     let success = false;
+    const timestamp = Date.now();
     for (const path of pathsToTry) {
       try {
-        const response = await fetch(path);
-        if (response.ok) {
+        const response = await fetch(`${path}?t=${timestamp}`);
+        const contentType = response.headers.get('content-type') || '';
+        
+        // Skip if response is HTML (Vite SPA fallback 404) or not HTTP 200
+        if (response.ok && !contentType.includes('text/html')) {
           const blob = await response.blob();
           const zip = await JSZip.loadAsync(blob);
           const extractedFiles: File[] = [];
@@ -100,10 +153,12 @@ const App: React.FC = () => {
             break;
           }
         }
-      } catch (err) { console.error(err); }
+      } catch (err) { 
+        console.warn(`No se pudo cargar el archivo desde ${path}:`, err); 
+      }
     }
 
-    if (!success) setLoadError(`No se pudo localizar el archivo ZIP automáticamente.`);
+    if (!success) setLoadError(`No se encontró un archivo ZIP de datos en la carpeta public/. Puedes cargar un archivo ZIP manualmente o seleccionar una carpeta local.`);
     setIsLoading(false);
   }, [processFiles]);
 
@@ -122,7 +177,11 @@ const App: React.FC = () => {
       });
       await Promise.all(promises);
       await processFiles(extractedFiles);
-    } catch (error) { alert("Error"); } finally { setIsLoading(false); }
+    } catch (error) { 
+      alert("No se pudo descompilar el archivo. Verifica que sea un archivo .zip válido."); 
+    } finally { 
+      setIsLoading(false); 
+    }
   }, [processFiles]);
 
   const handleFolderSelect = useCallback((fileList: FileList | null) => {
@@ -173,20 +232,109 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        {files.length > 0 && (
-          <button 
-            onClick={() => setViewMode('analysis')}
-            className={`flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 rounded-lg font-bold transition-all duration-200 shadow-lg text-xs md:text-sm flex-shrink-0 ml-2 ${
-              viewMode === 'analysis'
-                ? 'bg-blue-700 text-white ring-2 ring-white/30 translate-y-0.5'
-                : 'bg-accent hover:bg-blue-500 text-white shadow-blue-500/20'
-            }`}
-          >
-            <Layers size={16} className={viewMode === 'analysis' ? 'animate-pulse' : ''} />
-            <span className="hidden sm:inline">Comparativa</span>
-            <span className="sm:hidden">Comparativa</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+          {isAdmin ? (
+            <>
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-900/60 text-blue-200 border border-blue-700/50">
+                <ShieldCheck size={14} className="text-blue-400" />
+                <span>Admin</span>
+              </div>
+
+              <button
+                onClick={handleLoadZip}
+                disabled={isLoading}
+                title="Recargar ZIP desde servidor"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-3.5 md:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs md:text-sm font-medium transition-all shadow border border-slate-700 disabled:opacity-50"
+              >
+                <RefreshCw size={15} className={isLoading ? "animate-spin" : ""} />
+                <span className="hidden lg:inline">Recargar ZIP</span>
+              </button>
+
+              <label 
+                title="Cargar otro ZIP manualmente"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-3.5 md:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs md:text-sm font-medium transition-all shadow border border-slate-700 cursor-pointer"
+              >
+                <Upload size={15} />
+                <span className="hidden lg:inline">Cargar ZIP</span>
+                <input 
+                  type="file" 
+                  accept=".zip" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleManualZip(e.target.files[0]);
+                    }
+                  }} 
+                />
+              </label>
+
+              <button
+                onClick={() => setViewMode('correlation')}
+                title="Generar Análisis de Correlación entre Fondos"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-3.5 md:py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-bold transition-all shadow border border-blue-500 flex-shrink-0"
+              >
+                <Network size={15} />
+                <span className="hidden lg:inline">Generar Análisis</span>
+              </button>
+
+              <button
+                onClick={() => setShowChangePasswordModal(true)}
+                title="Cambiar contraseña de administrador"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-3.5 md:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs md:text-sm font-medium transition-all shadow border border-slate-700"
+              >
+                <KeyRound size={15} />
+                <span className="hidden lg:inline">Cambiar contraseña</span>
+              </button>
+
+              <button
+                onClick={handleAdminLogout}
+                title="Salir del modo administración"
+                className="p-1.5 md:p-2 rounded-lg bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-200 transition-colors border border-slate-700"
+              >
+                <LogOut size={15} />
+              </button>
+            </>
+          ) : (
+            <button
+              onDoubleClick={() => {
+                window.history.pushState({}, '', '/admin');
+                setShowAdminModal(true);
+              }}
+              aria-label="Acceso reservado"
+              className="w-8 h-8 opacity-0 cursor-default select-none focus:outline-none"
+            />
+          )}
+
+          {files.length > 0 && (
+            <>
+              <button 
+                onClick={() => setViewMode('analysis')}
+                className={`flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 rounded-lg font-bold transition-all duration-200 shadow-lg text-xs md:text-sm flex-shrink-0 ${
+                  viewMode === 'analysis'
+                    ? 'bg-blue-700 text-white ring-2 ring-white/30 translate-y-0.5'
+                    : 'bg-accent hover:bg-blue-500 text-white shadow-blue-500/20'
+                }`}
+              >
+                <Layers size={16} className={viewMode === 'analysis' ? 'animate-pulse' : ''} />
+                <span className="hidden sm:inline">Comparativa</span>
+                <span className="sm:hidden">Comparativa</span>
+              </button>
+
+              <button 
+                onClick={() => setViewMode('correlation')}
+                className={`flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 rounded-lg font-bold transition-all duration-200 shadow-lg text-xs md:text-sm flex-shrink-0 ${
+                  viewMode === 'correlation'
+                    ? 'bg-blue-700 text-white ring-2 ring-white/30 translate-y-0.5'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'
+                }`}
+              >
+                <Network size={16} className={viewMode === 'correlation' ? 'animate-pulse' : ''} />
+                <span className="hidden sm:inline">Análisis Correlación</span>
+                <span className="sm:hidden">Correlación</span>
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
       <main className="flex-1 overflow-hidden flex relative">
@@ -204,7 +352,7 @@ const App: React.FC = () => {
         ) : (
           <>
             {/* Sidebar: oculto en móvil si hay algo seleccionado */}
-            <div className={`${(isDetailViewActive || isAnalysisViewActive) ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0`}>
+            <div className={`${(isDetailViewActive || isAnalysisViewActive || viewMode === 'correlation') ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0`}>
               <FileList 
                 files={files} 
                 selectedId={viewMode === 'detail' ? selectedFileId : null} 
@@ -213,9 +361,11 @@ const App: React.FC = () => {
             </div>
             
             {/* Contenido Principal */}
-            <div className={`${(isDetailViewActive || isAnalysisViewActive) ? 'flex' : 'hidden md:flex'} flex-1 overflow-hidden`}>
+            <div className={`${(isDetailViewActive || isAnalysisViewActive || viewMode === 'correlation') ? 'flex' : 'hidden md:flex'} flex-1 overflow-hidden`}>
               {viewMode === 'analysis' ? (
                 <AnalysisView files={files} onBack={() => { setViewMode('detail'); setSelectedFileId(null); }} />
+              ) : viewMode === 'correlation' ? (
+                <CorrelationView files={files} onBack={() => { setViewMode('detail'); setSelectedFileId(null); }} />
               ) : (
                 selectedFileId && getSelectedFile() ? (
                   <FileDetail 
@@ -236,6 +386,22 @@ const App: React.FC = () => {
           </>
         )}
       </main>
+
+      <AdminModal 
+        isOpen={showAdminModal} 
+        onClose={() => {
+          setShowAdminModal(false);
+          if (window.location.pathname.startsWith('/admin') || window.location.hash === '#admin') {
+            window.history.pushState({}, '', '/');
+          }
+        }} 
+        onLoginSuccess={handleAdminSuccess} 
+      />
+
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+      />
     </div>
   );
 };

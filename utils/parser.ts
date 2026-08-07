@@ -44,7 +44,7 @@ export const parseXBRLContent = (xmlContent: string): { records: ParsedRecord[],
       nodes.forEach(node => {
         const ctx = node.getAttribute("contextRef");
         if (ctx?.endsWith("_ia")) target.actual = parseVal(node.textContent);
-        else if (ctx?.endsWith("_ipp")) target.previous = parseVal(node.textContent);
+        else if (ctx?.endsWith("_ipp") || ctx?.endsWith("_ipy")) target.previous = parseVal(node.textContent);
       });
     };
 
@@ -101,7 +101,7 @@ export const parseXBRLContent = (xmlContent: string): { records: ParsedRecord[],
       const contextRef = node.getAttribute("contextRef");
       if (contextRef) {
         if (contextRef.endsWith("_ia")) currentWeight = node.textContent?.trim() || "N/A";
-        else if (contextRef.endsWith("_ipp")) previousWeight = node.textContent?.trim() || "N/A";
+        else if (contextRef.endsWith("_ipp") || contextRef.endsWith("_ipy")) previousWeight = node.textContent?.trim() || "N/A";
       }
     }
 

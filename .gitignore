@@ -1,7 +1,3 @@
-# Archivos de datos XBRL/XML
-*.xbrl
-*.xml
-
 # Dependencias
 node_modules/
 .pnp
