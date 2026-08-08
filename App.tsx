@@ -223,10 +223,10 @@ const App: React.FC = () => {
             </h1>
             <div className="mt-0.5">
               <p className="text-[9px] md:text-xs font-medium opacity-90 leading-tight truncate">
-                Periodo de referencia: 1 de julio de 2025 al 31 de diciembre de 2025
+                Periodo de referencia: 1 de julio de 2026 al 31 de diciembre de 2026
               </p>
               <p className="text-[8px] md:text-[10px] opacity-70 leading-tight truncate font-light">
-                Datos recogidos de la CNMV correspondientes al primer semestre de 2025
+                Datos recogidos de la CNMV correspondientes al segundo semestre de 2026
               </p>
             </div>
           </div>
